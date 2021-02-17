@@ -1,50 +1,51 @@
+  
 import requests
 from bs4 import BeautifulSoup
 from django.shortcuts import render
 from requests.compat import quote_plus
 from . import models
 
+BASE_CRAIGSLIST_URL = 'https://losangeles.craigslist.org/search/?query={}'
+BASE_IMAGE_URL = 'https://images.craigslist.org/{}_300x300.jpg'
 
 
-
-SO_URL = 'https://stackoverflow.com/search/?q={}'
-def home1(request):
-    return render(request, 'home.html')
+def home(request):
+    return render(request, 'base.html')
 
 
 def new_search(request):
     search = request.POST.get('search')
     models.Search.objects.create(search=search)
+    final_url = BASE_CRAIGSLIST_URL.format(quote_plus(search))
+    response = requests.get(final_url)
+    data = response.text
+    soup = BeautifulSoup(data, features='html.parser')
 
-    search = request.POST.get('search')
-    models.Search.objects.create(search=search)
-    final_url = SO_URL.format(quote_plus(search))
-    print(final_url)
-    page = requests.get(final_url).text
-    soup = BeautifulSoup(page, 'html.parser')
-    print(soup)
-    results = soup.find("div", {"class": "grid--cell fl1 fs-body3 mr12"}).text
-    results = results.strip().split(' ')[0]
+    post_listings = soup.find_all('li', {'class': 'result-row'})
 
-    question = soup.findAll("div", {"class": "question-summary search-result"})
-    total_pages = soup.findAll("a", {"class": "s-pagination--item js-pagination-item"})
+    final_postings = []
 
-    print('Found:', str(len(question)), 'questions')
-    print('Found: ', total_pages[-2].text, 'pages')
-    f = []
-    rel_ques = []
-    for x in range(0, int(len(question) / 2)):
-        rel_ques.append(soup.find("div", {"class": "question-summary search-result", "data-position": str(x + 1)}))
+    for post in post_listings:
+        post_title = post.find(class_='result-title').text
+        post_url = post.find('a').get('href')
 
-    for rel_question in rel_ques:
-        p = rel_question.find("a", {"class": "question-hyperlink"}).text
-        q = rel_question.find("div", {"class": "excerpt"}).text.strip()
-        f.append((p,q))
+        if post.find(class_='result-price'):
+            post_price = post.find(class_='result-price').text
+        else:
+            post_price = 'N/A'
 
+        if post.find(class_='result-image').get('data-ids'):
+            post_image_id = post.find(class_='result-image').get('data-ids').split(',')[0].split(':')[1]
+            post_image_url = BASE_IMAGE_URL.format(post_image_id)
+            print(post_image_url)
+        else:
+            post_image_url = 'https://craigslist.org/images/peace.jpg'
+
+        final_postings.append((post_title, post_url, post_price, post_image_url))
 
     stuff_for_frontend = {
-            'search': search,
-            'f': f,
-        }
+        'search': search,
+        'final_postings': final_postings,
+    }
 
     return render(request, 'my_app/new_search.html', stuff_for_frontend)
