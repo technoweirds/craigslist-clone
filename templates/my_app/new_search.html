@@ -1,20 +1,24 @@
+
 {% extends 'home.html' %}
 
 {% block content %}
     <h2 style="text-align: center">{{ search | title }}</h2>
 
     <div class="row">
-        {% for post in f %}
+        {% for post in final_postings %}
             <div class="col s4">
                 <div class="card">
+                    <div class="card-image">
+                        <a href="{{ post.1 }}"><img src="{{ post.3 }}" alt=""></a>
+                    </div>
                     <div class="card-content">
-                      <b> <p>{{ post.0 }}</p></b>
-                        <p>{{ post.1}}</p>
-
+                        <p>{{ post.0 }}</p>
+                    </div>
+                    <div class="card-action">
+                        <a href="{{ post.1 }}">View listing: Price {{ post.2 }}</a>
                     </div>
                 </div>
             </div>
         {% endfor %}
     </div>
-
 {% endblock content %}
